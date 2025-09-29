@@ -19,6 +19,7 @@
                     <li class="nav-item"><a href="#cursos" class="nav-link">Cursos</a></li>
                     <li class="nav-item"><a href="#sobre" class="nav-link">Sobre Nós</a></li>
                     <li class="nav-item"><a href="#contato" class="nav-link">Contato</a></li>
+                    <li class="nav-item"><a href="/auth/login" class="nav-link">Login</a></li>
                 </ul>
                 <div class="hamburger">
                     <span class="bar"></span>
