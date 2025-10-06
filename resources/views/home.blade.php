@@ -6,6 +6,11 @@
 
         <title>{{ config('app.name', 'Laravel') }}</title>
         <link href="{{ asset('css/style.css') }}" rel="stylesheet">
+        
+        <!-- Firebase SDK -->
+        <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-app-compat.js"></script>
+        <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-analytics-compat.js"></script>
+
         <script defer src="{{ asset('js/script.js') }}"></script>
     </head>
     <body>
@@ -149,6 +154,167 @@
             <p>&copy; 2025 Faculdade UniAlfa. Todos os direitos reservados.</p>
         </footer>
 
-        <script src="script.js"></script>
+        <!-- Firebase Analytics Configuration -->
+        <script>
+            // Firebase configuration
+            const firebaseConfig = {
+                apiKey: "AIzaSyBkj0ff7oa8QvDghi9Pk8reSGjgf98lhlw",
+                authDomain: "unialfa-53fe8.firebaseapp.com",
+                projectId: "unialfa-53fe8",
+                storageBucket: "unialfa-53fe8.firebasestorage.app",
+                messagingSenderId: "329408140101",
+                appId: "1:329408140101:web:337ce5efbafe313ca5242c",
+                measurementId: "G-ZMMTNE5Z46"
+            };
+
+            // Initialize Firebase
+            firebase.initializeApp(firebaseConfig);
+            const analytics = firebase.analytics();
+
+            // Track page view
+            analytics.logEvent('page_view', {
+                page_title: document.title,
+                page_location: window.location.href
+            });
+
+            // Track custom events
+            function trackEvent(eventName, parameters = {}) {
+                analytics.logEvent(eventName, parameters);
+            }
+
+            // Track scroll depth
+            let scrollDepthTracked = {
+                25: false,
+                50: false,
+                75: false,
+                100: false
+            };
+
+            window.addEventListener('scroll', function() {
+                const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
+                const scrolled = window.scrollY;
+                const scrollPercent = Math.round((scrolled / scrollHeight) * 100);
+
+                for (let depth in scrollDepthTracked) {
+                    if (scrollPercent >= depth && !scrollDepthTracked[depth]) {
+                        scrollDepthTracked[depth] = true;
+                        trackEvent('scroll_depth', {
+                            scroll_depth: depth + '%'
+                        });
+                    }
+                }
+            });
+
+            // Track section views (when sections come into viewport)
+            const observerOptions = {
+                threshold: 0.5
+            };
+
+            const sectionObserver = new IntersectionObserver(function(entries) {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        trackEvent('section_view', {
+                            section_name: entry.target.id
+                        });
+                    }
+                });
+            }, observerOptions);
+
+            // Observe all sections
+            document.addEventListener('DOMContentLoaded', function() {
+                const sections = document.querySelectorAll('section[id]');
+                sections.forEach(section => {
+                    sectionObserver.observe(section);
+                });
+
+                // Track button clicks
+                document.querySelectorAll('.btn').forEach(button => {
+                    button.addEventListener('click', function(e) {
+                        const buttonText = this.textContent.trim();
+                        const buttonHref = this.href || this.getAttribute('href') || 'no-href';
+                        
+                        trackEvent('button_click', {
+                            button_text: buttonText,
+                            button_href: buttonHref,
+                            section: this.closest('section')?.id || 'unknown'
+                        });
+                    });
+                });
+
+                // Track course card interactions
+                document.querySelectorAll('.curso-card').forEach(card => {
+                    card.addEventListener('click', function() {
+                        const courseName = this.querySelector('h3')?.textContent || 'unknown';
+                        trackEvent('course_interaction', {
+                            course_name: courseName,
+                            interaction_type: 'card_click'
+                        });
+                    });
+                });
+
+                // Track form submissions
+                const contactForm = document.getElementById('contactForm');
+                if (contactForm) {
+                    contactForm.addEventListener('submit', function(e) {
+                        trackEvent('form_submission', {
+                            form_name: 'contact_form'
+                        });
+                    });
+                }
+
+                // Track navigation clicks
+                document.querySelectorAll('.nav-link').forEach(link => {
+                    link.addEventListener('click', function(e) {
+                        const linkText = this.textContent.trim();
+                        const linkHref = this.href || this.getAttribute('href');
+                        
+                        trackEvent('navigation_click', {
+                            nav_item: linkText,
+                            nav_href: linkHref
+                        });
+                    });
+                });
+
+                // Track mobile menu usage
+                const hamburger = document.querySelector('.hamburger');
+                if (hamburger) {
+                    hamburger.addEventListener('click', function() {
+                        trackEvent('mobile_menu_toggle', {
+                            action: 'open'
+                        });
+                    });
+                }
+
+                // Track time on page
+                const startTime = Date.now();
+                let timeTracked = {
+                    30: false,
+                    60: false,
+                    120: false,
+                    300: false
+                };
+
+                setInterval(function() {
+                    const timeOnPage = Math.floor((Date.now() - startTime) / 1000);
+                    
+                    for (let threshold in timeTracked) {
+                        if (timeOnPage >= threshold && !timeTracked[threshold]) {
+                            timeTracked[threshold] = true;
+                            trackEvent('time_on_page', {
+                                duration_seconds: threshold
+                            });
+                        }
+                    }
+                }, 5000); // Check every 5 seconds
+            });
+
+            // Track page exit
+            window.addEventListener('beforeunload', function() {
+                const timeOnPage = Math.floor((Date.now() - startTime) / 1000);
+                trackEvent('page_exit', {
+                    time_on_page: timeOnPage
+                });
+            });
+        </script>
     </body>
 </html>
