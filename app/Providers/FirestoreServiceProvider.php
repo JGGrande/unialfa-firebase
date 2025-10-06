@@ -11,8 +11,8 @@ class FirestoreServiceProvider extends ServiceProvider
     {
         $this->app->singleton(FirestoreClient::class, function () {
             return new FirestoreClient([
-                'keyFilePath' => config('services.firestore.credentials'),
-                'projectId'   => config('services.firestore.project_id'),
+                'keyFilePath' => config('services.firebase.credentials'),
+                'projectId'   => config('services.firebase.project_id'),
             ]);
         });
     }
