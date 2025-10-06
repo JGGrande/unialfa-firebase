@@ -284,6 +284,11 @@
             font-size: 0.9rem;
         }
 
+        .action-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15) !important;
+        }
+
         @media (max-width: 768px) {
             .painel-header .container {
                 flex-direction: column;
@@ -314,6 +319,7 @@
             <ul class="nav-menu">
                 <li class="nav-item"><a href="/painel" class="nav-link">Painel</a></li>
                 @if($user['perfil'] === 'admin')
+                    <li class="nav-item"><a href="{{ route('cursos.index') }}" class="nav-link">Cursos</a></li>
                     <li class="nav-item"><a href="#" class="nav-link">Relatórios</a></li>
                     <li class="nav-item"><a href="#" class="nav-link">Configurações</a></li>
                 @endif
@@ -384,6 +390,16 @@
                         <div class="stat-number">{{ count(array_filter($users, fn($u) => $u['perfil'] === 'admin')) }}</div>
                         <div class="stat-label">Administradores</div>
                     </div>
+                </div>
+
+                <div class="admin-actions" style="margin: 2rem 0;">
+                    <a href="{{ route('cursos.index') }}" class="action-card" style="display: inline-block; background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); text-decoration: none; color: #003366; margin-right: 1rem; transition: transform 0.3s ease;">
+                        <div style="text-align: center;">
+                            <i class="fas fa-graduation-cap" style="font-size: 2rem; margin-bottom: 0.5rem; color: #fdb913;"></i>
+                            <h3 style="margin: 0; font-size: 1.1rem;">Gerenciar Cursos</h3>
+                            <p style="margin: 0.5rem 0 0 0; color: #666; font-size: 0.9rem;">Adicionar, editar e visualizar cursos</p>
+                        </div>
+                    </a>
                 </div>
 
                 <h2 class="section-title">Gerenciar Usuários</h2>
