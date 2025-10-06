@@ -43,38 +43,51 @@
                     <h2 class="section-title">Cursos Disponíveis</h2>
                     <p class="section-description">Formação de qualidade que prepara você para os desafios do futuro.</p>
                     <div class="cursos-grid">
-                        <div class="curso-card">
-                            <img src="https://www.alfaumuarama.edu.br//downloads/cursos/1571659223g.jpg" alt="Estudantes de Administração">
-                            <div class="curso-info">
-                                <h3>Administração</h3>
-                                <p>Prepare-se para gerenciar e liderar organizações com uma visão estratégica e inovadora.</p>
-                                <a href="#" class="btn btn-secondary">Saiba Mais</a>
+                        @if(count($cursos) > 0)
+                            @foreach($cursos as $curso)
+                                <div class="curso-card">
+                                    <img src="{{ $curso['image_url'] }}" alt="{{ $curso['nome'] }}" onerror="this.src='https://via.placeholder.com/350x200?text=Imagem+Indisponível'">
+                                    <div class="curso-info">
+                                        <h3>{{ $curso['nome'] }}</h3>
+                                        <p>{{ Str::limit($curso['descricao'], 120) }}</p>
+                                        <a href="#contato" class="btn btn-secondary">Saiba Mais</a>
+                                    </div>
+                                </div>
+                            @endforeach
+                        @else
+                            <div class="curso-card">
+                                <img src="https://www.alfaumuarama.edu.br//downloads/cursos/1571659223g.jpg" alt="Estudantes de Administração">
+                                <div class="curso-info">
+                                    <h3>Administração</h3>
+                                    <p>Prepare-se para gerenciar e liderar organizações com uma visão estratégica e inovadora.</p>
+                                    <a href="#contato" class="btn btn-secondary">Saiba Mais</a>
+                                </div>
                             </div>
-                        </div>
-                        <div class="curso-card">
-                            <img src="https://www.alfaumuarama.edu.br//downloads/cursos/1635342576g.jpg" alt="Estudante de Direito">
-                            <div class="curso-info">
-                                <h3>Direito</h3>
-                                <p>Uma formação sólida para quem busca atuar nas diversas áreas da carreira jurídica.</p>
-                                <a href="#" class="btn btn-secondary">Saiba Mais</a>
+                            <div class="curso-card">
+                                <img src="https://www.alfaumuarama.edu.br//downloads/cursos/1635342576g.jpg" alt="Estudante de Direito">
+                                <div class="curso-info">
+                                    <h3>Direito</h3>
+                                    <p>Uma formação sólida para quem busca atuar nas diversas áreas da carreira jurídica.</p>
+                                    <a href="#contato" class="btn btn-secondary">Saiba Mais</a>
+                                </div>
                             </div>
-                        </div>
-                        <div class="curso-card">
-                            <img src="https://www.alfaumuarama.edu.br//downloads/cursos/1571662070g.jpg" alt="Estudantes de Pedagogia">
-                            <div class="curso-info">
-                                <h3>Pedagogia</h3>
-                                <p>Forme-se para transformar a educação e impactar positivamente a vida de alunos.</p>
-                                <a href="#" class="btn btn-secondary">Saiba Mais</a>
+                            <div class="curso-card">
+                                <img src="https://www.alfaumuarama.edu.br//downloads/cursos/1571662070g.jpg" alt="Estudantes de Pedagogia">
+                                <div class="curso-info">
+                                    <h3>Pedagogia</h3>
+                                    <p>Forme-se para transformar a educação e impactar positivamente a vida de alunos.</p>
+                                    <a href="#contato" class="btn btn-secondary">Saiba Mais</a>
+                                </div>
                             </div>
-                        </div>
-                        <div class="curso-card">
-                            <img src="https://www.alfaumuarama.edu.br//downloads/cursos/1571230066g.jpg" alt="Laboratório de Engenharia">
-                            <div class="curso-info">
-                                <h3>Sistemas para Internet</h3>
-                                <p>Desenvolva habilidades em programação, design e gestão de projetos para a web.</p>
-                                <a href="#" class="btn btn-secondary">Saiba Mais</a>
+                            <div class="curso-card">
+                                <img src="https://www.alfaumuarama.edu.br//downloads/cursos/1571230066g.jpg" alt="Laboratório de Engenharia">
+                                <div class="curso-info">
+                                    <h3>Sistemas para Internet</h3>
+                                    <p>Desenvolva habilidades em programação, design e gestão de projetos para a web.</p>
+                                    <a href="#contato" class="btn btn-secondary">Saiba Mais</a>
+                                </div>
                             </div>
-                        </div>
+                        @endif
                     </div>
                 </div>
             </section>
