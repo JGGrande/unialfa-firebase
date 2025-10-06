@@ -3,9 +3,14 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Login - {{ config('app.name', 'Laravel') }}</title>
     <link href="{{ asset('css/style.css') }}" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-auth-compat.js"></script>
     <style>
         .auth-container {
             min-height: 100vh;
@@ -160,6 +165,62 @@
             font-size: 0.9rem;
         }
 
+        .btn-google {
+            width: 100%;
+            padding: 14px;
+            background: white;
+            color: #333;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-family: 'Poppins', sans-serif;
+            font-weight: 500;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+            position: relative;
+        }
+
+        .btn-google:hover {
+            background: #f8f9fa;
+            border-color: #ccc;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-google .google-icon {
+            width: 20px;
+            height: 20px;
+        }
+
+        .btn-google.loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        .btn-google.loading::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 20px;
+            height: 20px;
+            margin: -10px 0 0 -10px;
+            border: 2px solid #ccc;
+            border-top: 2px solid #333;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
         .auth-footer {
             text-align: center;
         }
@@ -288,6 +349,16 @@
                 <span>ou</span>
             </div>
 
+            <button type="button" id="googleSignIn" class="btn-google">
+                <svg class="google-icon" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                </svg>
+                Continuar com Google
+            </button>
+
             <div class="auth-footer">
                 <p>Não tem uma conta? <a href="/auth/register">Cadastre-se aqui</a></p>
             </div>
@@ -295,15 +366,118 @@
     </div>
 
     <script>
-        document.querySelectorAll('.auth-form input').forEach(input => {
-            input.addEventListener('focus', function() {
-                this.nextElementSibling.style.color = '#fdb913';
-            });
+        const firebaseConfig = {
+            apiKey: "AIzaSyBkj0ff7oa8QvDghi9Pk8reSGjgf98lhlw",
+            authDomain: "unialfa-53fe8.firebaseapp.com",
+            projectId: "unialfa-53fe8",
+            storageBucket: "unialfa-53fe8.firebasestorage.app",
+            messagingSenderId: "329408140101",
+            appId: "1:329408140101:web:337ce5efbafe313ca5242c",
+            measurementId: "G-ZMMTNE5Z46"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+
+        const provider = new firebase.auth.GoogleAuthProvider();
+        provider.addScope('email');
+        provider.addScope('profile');
+
+        async function signInWithGoogle() {
+            const googleButton = document.getElementById('googleSignIn');
             
-            input.addEventListener('blur', function() {
-                if (!this.value) {
-                    this.nextElementSibling.style.color = '#999';
+            try {
+                // Add loading state
+                googleButton.classList.add('loading');
+                googleButton.textContent = 'Conectando...';
+
+                const result = await auth.signInWithPopup(provider);
+                const user = result.user;
+
+                const userData = {
+                    uid: user.uid,
+                    nome: user.displayName,
+                    email: user.email,
+                    photo_url: user.photoURL,
+                    provider: 'google'
+                };
+
+                await sendUserToBackend(userData);
+                
+            } catch (error) {
+                console.error('Error during Google sign-in:', error);
+                
+                // Remove loading state
+                googleButton.classList.remove('loading');
+                googleButton.innerHTML = `
+                    <svg class="google-icon" viewBox="0 0 24 24">
+                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                    </svg>
+                    Continuar com Google
+                `;
+                
+                showError('Erro ao fazer login com Google. Tente novamente.');
+            }
+        }
+
+        async function sendUserToBackend(userData) {
+            try {
+                const response = await fetch('/auth/google-login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify(userData)
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.success) {
+                    window.location.href = result.redirect || '/painel';
+                } else {
+                    throw new Error(result.message || 'Erro ao processar login');
                 }
+
+            } catch (error) {
+                console.error('Error sending user data to backend:', error);
+                showError('Erro ao processar login. Tente novamente.');
+
+                auth.signOut();
+            }
+        }
+
+        function showError(message) {
+            let errorDiv = document.querySelector('.error-message');
+            if (!errorDiv) {
+                errorDiv = document.createElement('div');
+                errorDiv.className = 'error-message';
+                document.querySelector('.auth-form').insertAdjacentElement('beforebegin', errorDiv);
+            }
+            
+            errorDiv.innerHTML = `<ul style="margin: 0; list-style: none;"><li>${message}</li></ul>`;
+            
+            setTimeout(() => {
+                errorDiv.remove();
+            }, 5000);
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('googleSignIn').addEventListener('click', signInWithGoogle);
+            
+            document.querySelectorAll('.auth-form input').forEach(input => {
+                input.addEventListener('focus', function() {
+                    this.nextElementSibling.style.color = '#fdb913';
+                });
+                
+                input.addEventListener('blur', function() {
+                    if (!this.value) {
+                        this.nextElementSibling.style.color = '#999';
+                    }
+                });
             });
         });
     </script>
