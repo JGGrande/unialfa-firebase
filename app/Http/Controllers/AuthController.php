@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Google\Cloud\Firestore\FirestoreClient;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class AuthController extends Controller
 {
@@ -74,4 +75,84 @@ class AuthController extends Controller
         return redirect('/auth/login');
     }
 
+    public function googleLogin(Request $request)
+    {
+        try {
+            $userData = $request->validate([
+                'uid' => 'nullable|string',
+                'nome' => 'required|string',
+                'email' => 'required|email',
+                'photo_url' => 'nullable|string',
+                'provider' => 'required|string'
+            ]);
+
+            $usersCollection = $this->firestore->collection('users');
+
+            $query = $usersCollection->where('email', '=', $userData['email']);
+            $documents = $query->documents();
+
+            if (!$documents->isEmpty()) {
+                //Se o usuário existe, atualiza com as informações do Google se necessário
+                $existingUser = $documents->rows()[0]->data();
+                $userId = $documents->rows()[0]->id();
+
+                $updateData = [];
+                if (!isset($existingUser['google_uid'])) {
+                    $updateData['google_uid'] = $userData['uid'];
+                }
+                if (!isset($existingUser['photo_url']) && $userData['photo_url']) {
+                    $updateData['photo_url'] = $userData['photo_url'];
+                }
+                if (!isset($existingUser['provider'])) {
+                    $updateData['provider'] = $userData['provider'];
+                }
+
+                if (!empty($updateData)) {
+                    $usersCollection
+                        ->document($userId)
+                        ->update($updateData, ['merge' => true]);
+                    
+                    $existingUser = array_merge($existingUser, $updateData);
+                }
+
+                session(['user' => $existingUser, 'user_id' => $userId]);
+
+            } else {
+                // Cria novo usuário
+                $newUserData = [
+                    'nome' => $userData['nome'],
+                    'email' => $userData['email'],
+                    'google_uid' => $userData['uid'],
+                    'photo_url' => $userData['photo_url'] ?? null,
+                    'provider' => $userData['provider'],
+                    'perfil' => 'aluno', // Default role
+                    'created_at' => now()->toISOString(),
+                    'senha' => null // No password for Google users
+                ];
+
+                $docRef = $usersCollection->add($newUserData);
+                $userId = $docRef->id();
+
+                // Set session
+                session(['user' => $newUserData, 'user_id' => $userId]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Login realizado com sucesso',
+                'redirect' => '/painel'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Google login error: ' . $e->getMessage(), [
+                'request_data' => $request->all(),
+                'exception' => $e
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erro interno do servidor. Tente novamente.'
+            ], 500);
+        }
+    }
 }
