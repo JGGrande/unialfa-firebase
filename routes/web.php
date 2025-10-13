@@ -10,6 +10,7 @@ Route::prefix('auth')->group(function () {
     Route::get('register', [App\Http\Controllers\AuthController::class, 'showRegister'])->name('register');
     Route::post('register', [App\Http\Controllers\AuthController::class, 'registerUser']);
     Route::post('logout', [App\Http\Controllers\AuthController::class, 'logout'])->name('logout');
+    Route::post('google-login', [App\Http\Controllers\AuthController::class, 'googleLogin'])->name('auth.google');
 });
 
 Route::prefix('painel')->group(function () {
