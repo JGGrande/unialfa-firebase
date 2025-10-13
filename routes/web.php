@@ -7,6 +7,7 @@ Route::get('/', [App\Http\Controllers\CursoController::class, 'getCursosForHome'
 Route::prefix('auth')->group(function () {
     Route::get('login', [App\Http\Controllers\AuthController::class, 'showLogin'])->name('login');
     Route::post('login', [App\Http\Controllers\AuthController::class, 'auth']);
+    Route::post('google-login', [App\Http\Controllers\AuthController::class, 'googleLogin'])->name('auth.google');
     Route::get('register', [App\Http\Controllers\AuthController::class, 'showRegister'])->name('register');
     Route::post('register', [App\Http\Controllers\AuthController::class, 'registerUser']);
     Route::post('logout', [App\Http\Controllers\AuthController::class, 'logout'])->name('logout');
