@@ -2,76 +2,49 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Controller;
 use Google\Cloud\Firestore\FirestoreClient;
 use Illuminate\Http\Request;
 
 class AuthController extends Controller
 {
-    public function __construct(private FirestoreClient $firestore) {}
-    
-    public function showLogin()
-    {
-        return view('auth.login');
-    }
+    public function __construct(private FirestoreClient $firestore){}
 
-    public function showRegister()
-    {
-        return view('auth.register');
-    }
-
-    
     public function auth(Request $request)
-    {
-        $credentials = $request->validate([
-            'email' => 'required|string|email',
-            'senha' => 'required|string',
-        ]);
+    {   
+        //Buscar com where
+        $documents = $this
+            ->firestore
+            ->collection("users")
+            ->where("email", "=", "joao@unialfa.com.br")
+            ->documents();
 
-        $usersCollection = $this->firestore->collection('users');
-
-        
-        $query = $usersCollection->where('email', '=', $credentials['email']);
-        
-        $documents = $query->documents();
-
-        if ($documents->isEmpty()) {
-            return back()->withErrors(['email' => 'Invalid credentials.'])->withInput();
-        }
-
-        $user = $documents->rows()[0]->data();
-
-        if (!password_verify($credentials['senha'], $user['senha'])) {
-            return back()->withErrors(['senha' => 'Invalid credentials.'])->withInput();
-        }
-
-        session(['user' => $user, 'user_id' => $documents->rows()[0]->id()]);
-
-        return redirect('/painel');
-    }
-
-    public function registerUser(Request $request)
-    {
-        $data = $request->validate([
-            'nome' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255',
-            'senha' => 'required|string|min:6',
-        ]);
-
-        $data['senha'] = bcrypt($data['senha']);
-        $data['perfil'] = 'aluno';
-
+        //Adicionar novo documento
+        $user = [];
         $this
             ->firestore
-            ->collection('users')
-            ->add($data);
-
-        return redirect('/painel')->with('success', 'Registration successful. Please log in.');
+            ->collection("users")
+            ->add($user);
     }
-
-    public function logout()
+    
+    public function createUser(array $data)
     {
-        session()->forget(['user', 'user_id']);
-        return redirect('/auth/login');
+        return $this->firestore->collection('users')->add($data);
     }
 
+    public function getUser(string $id)
+    {
+        return $this->firestore->collection('users')->document($id)->snapshot();
+    }
+
+    public function updateUser(string $id, array $data)
+    {
+        return $this->firestore->collection('users')->document($id)->set($data, ['merge' => true]);
+    }
+
+    public function deleteUser(string $id)
+    {
+        return $this->firestore->collection('users')->document($id)->delete();
+    }
+        
 }
