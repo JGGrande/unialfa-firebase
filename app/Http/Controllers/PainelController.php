@@ -133,6 +133,7 @@ class PainelController extends Controller
     }
 
     public function destroy($id)
+    {
         $u = User::find($id);
         if (!$u) {
             return back()->with('error', 'Usuário não encontrado.');
