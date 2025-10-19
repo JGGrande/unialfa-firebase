@@ -134,14 +134,13 @@ class PainelController extends Controller
 
     public function destroy($id)
     {
-        $u = User::find($id);
-        if (!$u) {
-            return back()->with('error', 'Usuário não encontrado.');
-        }
-        $u->delete();
-        return redirect('/painel')->with('success', 'Usuário removido com sucesso!');
-                ->document($id)
-                ->delete();
+        try {
+            $u = User::find($id);
+
+            if (!$u) {
+                return back()->with('error', 'Usuário não encontrado.');
+            }
+            $u->delete();
 
             return redirect('/painel')->with('success', 'Usuário removido com sucesso!');
         } catch (\Exception $e) {
