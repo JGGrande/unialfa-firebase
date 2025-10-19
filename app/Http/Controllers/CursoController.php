@@ -2,13 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use Google\Cloud\Firestore\FirestoreClient;
+use App\Models\Curso;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class CursoController extends Controller
 {
-    public function __construct(private FirestoreClient $firestore) {}
+    public function __construct() {}
 
     public function index()
     {
@@ -23,25 +23,18 @@ class CursoController extends Controller
             return redirect('/painel')->with('error', 'Você não tem permissão para gerenciar cursos.');
         }
 
-        $cursos = [];
-        
         try {
-            $cursosCollection = $this->firestore->collection('cursos');
-            $documents = $cursosCollection->documents();
-            
-            foreach ($documents as $document) {
-                if ($document->exists()) {
-                    $cursoData = $document->data();
-                    $cursoData['id'] = $document->id();
-                    $cursos[] = $cursoData;
-                }
-            }
+            $cursos = Curso::orderBy('created_at', 'desc')->get()->map(fn($c) => [
+                'id' => $c->id,
+                'nome' => $c->nome,
+                'descricao' => $c->descricao,
+                'image_url' => $c->image_url,
+            ])->toArray();
+            return view('cursos.index', compact('user', 'cursos'));
         } catch (\Exception $e) {
             Log::error('Erro ao carregar cursos: ' . $e->getMessage());
             return redirect('/painel')->with('error', 'Erro ao carregar dados dos cursos.');
         }
-
-        return view('cursos.index', compact('user', 'cursos'));
     }
 
     public function create()
@@ -70,10 +63,7 @@ class CursoController extends Controller
         ]);
 
         try {
-            $this->firestore
-                ->collection('cursos')
-                ->add($data);
-
+            Curso::create($data);
             return redirect('/cursos')->with('success', 'Curso criado com sucesso!');
         } catch (\Exception $e) {
             Log::error('Erro ao criar curso: ' . $e->getMessage());
@@ -90,18 +80,16 @@ class CursoController extends Controller
         }
 
         try {
-            $document = $this->firestore
-                ->collection('cursos')
-                ->document($id)
-                ->snapshot();
-            
-            if (!$document->exists()) {
+            $c = Curso::find($id);
+            if (!$c) {
                 return redirect('/cursos')->with('error', 'Curso não encontrado.');
             }
-            
-            $curso = $document->data();
-            $curso['id'] = $document->id();
-            
+            $curso = [
+                'id' => $c->id,
+                'nome' => $c->nome,
+                'descricao' => $c->descricao,
+                'image_url' => $c->image_url,
+            ];
             return view('cursos.show', compact('user', 'curso'));
         } catch (\Exception $e) {
             Log::error('Erro ao carregar curso: ' . $e->getMessage());
@@ -118,18 +106,16 @@ class CursoController extends Controller
         }
 
         try {
-            $document = $this->firestore
-                ->collection('cursos')
-                ->document($id)
-                ->snapshot();
-            
-            if (!$document->exists()) {
+            $c = Curso::find($id);
+            if (!$c) {
                 return redirect('/cursos')->with('error', 'Curso não encontrado.');
             }
-            
-            $curso = $document->data();
-            $curso['id'] = $document->id();
-            
+            $curso = [
+                'id' => $c->id,
+                'nome' => $c->nome,
+                'descricao' => $c->descricao,
+                'image_url' => $c->image_url,
+            ];
             return view('cursos.edit', compact('user', 'curso'));
         } catch (\Exception $e) {
             Log::error('Erro ao carregar curso para edição: ' . $e->getMessage());
@@ -152,17 +138,11 @@ class CursoController extends Controller
         ]);
 
         try {
-            // Converter array associativo para o formato esperado pelo Firestore
-            $updateData = [];
-            foreach ($data as $field => $value) {
-                $updateData[] = [$field, $value];
+            $c = Curso::find($id);
+            if (!$c) {
+                return redirect('/cursos')->with('error', 'Curso não encontrado.');
             }
-            
-            $this->firestore
-                ->collection('cursos')
-                ->document($id)
-                ->update($updateData);
-            
+            $c->update($data);
             return redirect('/cursos')->with('success', 'Curso atualizado com sucesso!');
         } catch (\Exception $e) {
             Log::error('Erro ao atualizar curso: ' . $e->getMessage());
@@ -179,11 +159,11 @@ class CursoController extends Controller
         }
 
         try {
-            $this->firestore
-                ->collection('cursos')
-                ->document($id)
-                ->delete();
-
+            $c = Curso::find($id);
+            if (!$c) {
+                return redirect('/cursos')->with('error', 'Curso não encontrado.');
+            }
+            $c->delete();
             return redirect('/cursos')->with('success', 'Curso removido com sucesso!');
         } catch (\Exception $e) {
             Log::error('Erro ao remover curso: ' . $e->getMessage());
@@ -195,22 +175,15 @@ class CursoController extends Controller
     public function getCursosForHome()
     {
         try {
-            $cursosCollection = $this->firestore->collection('cursos');
-            $documents = $cursosCollection->documents();
-            
-            $cursos = [];
-            foreach ($documents as $document) {
-                if ($document->exists()) {
-                    $cursoData = $document->data();
-                    $cursoData['id'] = $document->id();
-                    $cursos[] = $cursoData;
-                }
-            }
-            
+            $cursos = Curso::orderBy('created_at', 'desc')->get()->map(fn($c) => [
+                'id' => $c->id,
+                'nome' => $c->nome,
+                'descricao' => $c->descricao,
+                'image_url' => $c->image_url,
+            ])->toArray();
             return view('home', compact('cursos'));
         } catch (\Exception $e) {
             Log::error('Erro ao carregar cursos para home: ' . $e->getMessage());
-            // Em caso de erro, mostrar a home com array vazio
             return view('home', ['cursos' => []]);
         }
     }

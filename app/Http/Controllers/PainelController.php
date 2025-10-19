@@ -2,37 +2,33 @@
 
 namespace App\Http\Controllers;
 
-use Google\Cloud\Firestore\FirestoreClient;
+use App\Models\User;
 use Illuminate\Http\Request;
 
 class PainelController extends Controller
 {
-    public function __construct(private FirestoreClient $firestore) {}
+    public function __construct() {}
 
     public function index()
     {
         $user = session('user');
-        
+
         if (!$user) {
             return redirect('/auth/login')->with('error', 'Você precisa estar logado para acessar o painel.');
         }
 
-        $users = [];
-        
         if ($user['perfil'] === 'admin') {
-            $usersCollection = $this->firestore->collection('users');
-            $documents = $usersCollection->documents();
-            
-            foreach ($documents as $document) {
-                if ($document->exists()) {
-                    $userData = $document->data();
-                    $userData['id'] = $document->id();
-                    $users[] = $userData;
-                }
-            }
+            $users = User::orderBy('created_at', 'desc')->get()->map(function ($u) {
+                return [
+                    'id' => (string) $u->id,
+                    'nome' => $u->name ?? '',
+                    'email' => $u->email,
+                    'perfil' => $u->perfil ?? 'aluno',
+                ];
+            })->toArray();
         } else {
-            $user['id'] = session('user_id');
-            $users[] = $user;
+            $user['id'] = (string) session('user_id');
+            $users = [$user];
         }
 
         return view('painel.index', compact('user', 'users'));
@@ -41,7 +37,7 @@ class PainelController extends Controller
     public function show($id)
     {
         $currentUser = session('user');
-        
+
         if (!$currentUser) {
             return redirect('/auth/login')->with('error', 'Você precisa estar logado.');
         }
@@ -50,30 +46,23 @@ class PainelController extends Controller
             return redirect('/painel')->with('error', 'Você não tem permissão para acessar esses dados.');
         }
 
-        try {
-            $document = $this
-                ->firestore
-                ->collection('users')
-                ->document($id)
-                ->snapshot();
-            
-            if (!$document->exists()) {
-                return redirect('/painel')->with('error', 'Usuário não encontrado.');
-            }
-            
-            $user = $document->data();
-            $user['id'] = $document->id();
-            
-            return view('painel.show', compact('currentUser', 'user'));
-        } catch (\Exception $e) {
-            return redirect('/painel')->with('error', 'Erro ao carregar dados do usuário.');
+        $u = User::find($id);
+        if (!$u) {
+            return redirect('/painel')->with('error', 'Usuário não encontrado.');
         }
+        $user = [
+            'id' => (string) $u->id,
+            'nome' => $u->name ?? '',
+            'email' => $u->email,
+            'perfil' => $u->perfil ?? 'aluno',
+        ];
+        return view('painel.show', compact('currentUser', 'user'));
     }
 
     public function edit($id)
     {
         $currentUser = session('user');
-        
+
         if (!$currentUser) {
             return redirect('/auth/login')->with('error', 'Você precisa estar logado.');
         }
@@ -82,30 +71,23 @@ class PainelController extends Controller
             return redirect('/painel')->with('error', 'Você não tem permissão para editar esses dados.');
         }
 
-        try {
-            $document = $this
-                ->firestore
-                ->collection('users')
-                ->document($id)
-                ->snapshot();
-            
-            if (!$document->exists()) {
-                return redirect('/painel')->with('error', 'Usuário não encontrado.');
-            }
-            
-            $user = $document->data();
-            $user['id'] = $document->id();
-            
-            return view('painel.edit', compact('currentUser', 'user'));
-        } catch (\Exception $e) {
-            return redirect('/painel')->with('error', 'Erro ao carregar dados do usuário.');
+        $u = User::find($id);
+        if (!$u) {
+            return redirect('/painel')->with('error', 'Usuário não encontrado.');
         }
+        $user = [
+            'id' => (string) $u->id,
+            'nome' => $u->name ?? '',
+            'email' => $u->email,
+            'perfil' => $u->perfil ?? 'aluno',
+        ];
+        return view('painel.edit', compact('currentUser', 'user'));
     }
 
     public function update(Request $request, $id)
     {
         $currentUser = session('user');
-        
+
         if (!$currentUser) {
             return redirect('/auth/login')->with('error', 'Você precisa estar logado.');
         }
@@ -120,48 +102,43 @@ class PainelController extends Controller
         ]);
 
         if (
-            $currentUser['perfil'] === 'admin' && 
+            $currentUser['perfil'] === 'admin' &&
             $request->has('perfil') &&
             in_array($request->input('perfil'), ['aluno', 'admin'])
         ) {
-            $data['perfil'] = $request->input('perfil');            
+            $data['perfil'] = $request->input('perfil');
         }
 
-        try {
-            $updateData = [];
-            foreach ($data as $field => $value) {
-                $updateData[] = ['path' => $field, 'value' => $value];
-            }
-            
-            $this
-                ->firestore
-                ->collection('users')
-                ->document($id)
-                ->update($updateData);
-            
-            if (session('user_id') === $id) {
-                $updatedUser = array_merge(session('user'), $data);
-                session(['user' => $updatedUser]);
-            }
-            
-            return redirect('/painel')->with('success', 'Dados atualizados com sucesso!');
-        } catch (\Exception $e) {
-            return back()->with('error', 'Erro ao atualizar dados do usuário.');
+        $u = User::find($id);
+        if (!$u) {
+            return back()->with('error', 'Usuário não encontrado.');
         }
+        $u->name = $data['nome'];
+        $u->email = $data['email'];
+        if (isset($data['perfil'])) {
+            $u->perfil = $data['perfil'];
+        }
+        $u->save();
+
+        if ((string) session('user_id') === (string) $id) {
+            $updatedUser = array_merge(session('user'), [
+                'nome' => $u->name,
+                'email' => $u->email,
+                'perfil' => $u->perfil ?? (session('user')['perfil'] ?? 'aluno'),
+            ]);
+            session(['user' => $updatedUser]);
+        }
+
+        return redirect('/painel')->with('success', 'Dados atualizados com sucesso!');
     }
 
     public function destroy($id)
-    {
-        $currentUser = session('user');
-        
-        if (!$currentUser || $currentUser['perfil'] !== 'admin') {
-            return redirect('/painel')->with('error', 'Você não tem permissão para remover usuários.');
+        $u = User::find($id);
+        if (!$u) {
+            return back()->with('error', 'Usuário não encontrado.');
         }
-
-        try {
-            $this
-                ->firestore
-                ->collection('users')
+        $u->delete();
+        return redirect('/painel')->with('success', 'Usuário removido com sucesso!');
                 ->document($id)
                 ->delete();
 

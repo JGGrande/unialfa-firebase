@@ -3,14 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use Google\Cloud\Firestore\FirestoreClient;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 
 class AuthController extends Controller
 {
-    public function __construct(private FirestoreClient $firestore){}
-    
+    public function __construct(){}
+
     public function showLogin()
     {
         return view('auth.login');
@@ -19,58 +20,44 @@ class AuthController extends Controller
     {
         return view('auth.register');
     }
-   
+
     public function auth(Request $request)
     {
         $credentials = $request->validate([
             'email' => 'required|string|email',
             'senha' => 'required|string',
         ]);
-        $usersCollection = $this->firestore->collection('users');
-        
-        $query = $usersCollection->where('email', '=', $credentials['email']);
-        
-        $documents = $query->documents();
-        if ($documents->isEmpty()) {
+        $u = User::where('email', $credentials['email'])->first();
+        if (!$u || !Hash::check($credentials['senha'], $u->password)) {
             return back()->withErrors(['email' => 'Invalid credentials.'])->withInput();
         }
-
-        $user = $documents->rows()[0]->data();
-        if (!password_verify($credentials['senha'], $user['senha'])) {
-            return back()->withErrors(['senha' => 'Invalid credentials.'])->withInput();
-        }
-
-        session(['user' => $user, 'user_id' => $documents->rows()[0]->id()]);
-        
+        session(['user' => ['nome' => $u->name, 'email' => $u->email, 'perfil' => $u->perfil ?? 'aluno'], 'user_id' => (string) $u->id]);
         return redirect('/painel');
     }
-    
+
     public function registerUser(Request $request)
     {
         $data = $request->validate([
             'nome' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255',
-            'senha' => 'required|string|min:6',
+            'email' => 'required|string|email|max:255|unique:users,email',
+            'senha' => 'required|string|min:6|confirmed',
         ]);
-
-        $data['senha'] = bcrypt($data['senha']);
-        
-        $data['perfil'] = 'aluno';
-        
-        $this
-            ->firestore
-            ->collection('users')
-            ->add($data);
-
-        return redirect('/painel')->with('success', 'Registration successful. Please log in.');
+        $u = new User();
+        $u->name = $data['nome'];
+        $u->email = $data['email'];
+        $u->password = Hash::make($data['senha']);
+        $u->perfil = 'aluno';
+        $u->save();
+        session(['user' => ['nome' => $u->name, 'email' => $u->email, 'perfil' => $u->perfil], 'user_id' => (string) $u->id]);
+        return redirect('/painel')->with('success', 'Registration successful.');
     }
-    
+
     public function logout()
     {
         session()->forget(['user', 'user_id']);
         return redirect('/auth/login');
     }
-    
+
     public function googleLogin(Request $request)
     {
         try {
@@ -82,69 +69,45 @@ class AuthController extends Controller
                 'provider' => 'required|string'
             ]);
 
-            $usersCollection = $this->firestore->collection('users');
+            $u = User::where('email', $userData['email'])->first();
 
-            $query = $usersCollection->where('email', '=', $userData['email']);
-            $documents = $query->documents();
-
-            if (!$documents->isEmpty()) {
-                //Se o usuário existe, atualiza com as informações do Google se necessário
-                $existingUser = $documents->rows()[0]->data();
-                $userId = $documents->rows()[0]->id();
-
-                $updateData = [];
-                if (!isset($existingUser['google_uid'])) {
-                    $updateData['google_uid'] = $userData['uid'];
+            if ($u) {
+                $updates = [];
+                if (empty($u->google_uid)) $updates['google_uid'] = $userData['uid'];
+                if (empty($u->provider)) $updates['provider'] = $userData['provider'];
+                if (empty($u->photo_url) && !empty($userData['photo_url'])) $updates['photo_url'] = $userData['photo_url'];
+                if (!empty($updates)) {
+                    // Ensure these columns exist; if not, ignore silently
+                    foreach ($updates as $k => $v) {
+                        $u->{$k} = $v;
+                    }
+                    $u->save();
                 }
-                if (!isset($existingUser['photo_url']) && $userData['photo_url']) {
-                    $updateData['photo_url'] = $userData['photo_url'];
-                }
-                if (!isset($existingUser['provider'])) {
-                    $updateData['provider'] = $userData['provider'];
-                }
-
-                if (!empty($updateData)) {
-                    $usersCollection
-                        ->document($userId)
-                        ->update($updateData, ['merge' => true]);
-
-                    $existingUser = array_merge($existingUser, $updateData);
-                }
-
-                session(['user' => $existingUser, 'user_id' => $userId]);
-
             } else {
-                // Cria novo usuário
-                $newUserData = [
-                    'nome' => $userData['nome'],
-                    'email' => $userData['email'],
-                    'google_uid' => $userData['uid'],
-                    'photo_url' => $userData['photo_url'] ?? null,
-                    'provider' => $userData['provider'],
-                    'perfil' => 'aluno', // Default role
-                    'created_at' => now()->toISOString(),
-                    'senha' => null // No password for Google users
-                ];
-
-                $docRef = $usersCollection->add($newUserData);
-                $userId = $docRef->id();
-
-                // Cria sessão
-                session(['user' => $newUserData, 'user_id' => $userId]);
+                $u = new User();
+                $u->name = $userData['nome'];
+                $u->email = $userData['email'];
+                $u->password = Hash::make(uniqid('google_', true)); // placeholder password
+                $u->perfil = 'aluno';
+                // Optional columns if present in users table
+                if (property_exists($u, 'google_uid')) $u->google_uid = $userData['uid'];
+                if (property_exists($u, 'photo_url')) $u->photo_url = $userData['photo_url'] ?? null;
+                if (property_exists($u, 'provider')) $u->provider = $userData['provider'];
+                $u->save();
             }
+
+            session(['user' => ['nome' => $u->name, 'email' => $u->email, 'perfil' => $u->perfil ?? 'aluno'], 'user_id' => (string) $u->id]);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Login realizado com sucesso',
                 'redirect' => '/painel'
             ]);
-
         } catch (\Exception $e) {
             Log::error('Google login error: ' . $e->getMessage(), [
                 'request_data' => $request->all(),
                 'exception' => $e
             ]);
-
             return response()->json([
                 'success' => false,
                 'message' => 'Erro interno do servidor. Tente novamente.'
