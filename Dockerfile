@@ -35,9 +35,6 @@ RUN composer install --no-dev --optimize-autoloader
 COPY ./.infra/apache-laravel.conf /etc/apache2/sites-available/000-default.conf
 RUN a2enmod rewrite
 
-# Rode as migrations
-RUN php artisan migrate --force
-
 # Exponha a porta 80
 EXPOSE 80
 

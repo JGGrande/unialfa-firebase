@@ -1,0 +1,12 @@
+# Ignorar o arquivo de ambiente local
+.env
+
+# Ignorar logs
+/storage/logs/*.log
+
+# Ignorar dependências do node (se houver)
+node_modules
+
+# Ignorar o Git
+.git
+.gitignore
