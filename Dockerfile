@@ -1,31 +1,45 @@
-FROM php:8.3
+# Use a imagem base do PHP com Apache
+FROM php:8.2-apache
 
-RUN apt-get update -y && apt-get install -y \
-    openssl \
-    zip \
-    unzip \
+# Defina o diretório de trabalho
+WORKDIR /var/www/html
+
+# Instale dependências do sistema
+RUN apt-get update && apt-get install -y \
     git \
-    libonig-dev
+    unzip \
+    curl \
+    libzip-dev \
+    libonig-dev \
+    libxml2-dev \
+    libpng-dev \
+    libjpeg-dev \
+    libfreetype6-dev \
+    libssl-dev \
+    && docker-php-ext-install pdo_mysql zip mbstring exif pcntl bcmath gd
 
-# Configure OpenTelemetry extension
-RUN curl -sSL https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions -o - | sh -s \
-    opentelemetry
-
-# Instala o Composer
+# Instale o Composer
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
-# Instala as extensões: grpc, opentelemetry, pdo_mysql, mbstring
-RUN install-php-extensions grpc opentelemetry pdo_mysql mbstring
+# Copie os arquivos do Laravel para o container
+COPY . /var/www/html
 
-WORKDIR /app
+# Defina permissões corretas
+RUN chown -R www-data:www-data /var/www/html
+RUN chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/public
 
-COPY . /app
+# Instale as dependências do PHP (Composer)
+RUN composer install --no-dev --optimize-autoloader
 
-# Instala as dependências do Laravel
-RUN composer install
+# Configure o Apache para apontar para a pasta public/
+COPY ./.infra/apache-laravel.conf /etc/apache2/sites-available/000-default.conf
+RUN a2enmod rewrite
 
-# Expor a porta do servidor Laravel
-EXPOSE 8000
+# Rode as migrations
+RUN php artisan migrate --force
 
-# Comando para rodar as migrações e iniciar o servidor
-CMD php artisan serve --host=0.0.0.0 --port=8000
+# Exponha a porta 80
+EXPOSE 80
+
+# Comando para iniciar o Apache
+CMD ["apache2-foreground"]
